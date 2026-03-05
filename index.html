@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Kegiatan Pembelajaran Tatap Muka</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        
+        /* Paper Styles */
+        .page {
+            background: white;
+            display: block;
+            margin: 0 auto;
+            margin-bottom: 0.5cm;
+            box-shadow: 0 0 0.5cm rgba(0,0,0,0.5);
+            /* Internal padding for content margin */
+            padding: 15mm;
+            overflow: hidden; /* Ensure content doesn't spill */
+            position: relative;
+        }
+
+        /* Default to A4 Landscape */
+        .page.a4 {
+            width: 29.7cm;
+            min-height: 21cm;
+        }
+
+        /* Legal Landscape: 33cm x 21.59cm (Width x Height in Landscape) */
+        .page.legal {
+            width: 33cm;
+            min-height: 21.59cm;
+        }
+
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+        th, td { border: 1px solid black; padding: 5px; vertical-align: top; }
+        th { 
+            background-color: #e2e8f0; 
+            text-align: center; 
+            font-weight: bold; 
+            vertical-align: middle; /* Center vertically */
+        }
+        
+        /* Input Styles within Table */
+        td input[type="text"], td select, .editable-cell {
+            width: 100%;
+            border: 1px solid transparent;
+            padding: 2px;
+            font-family: inherit;
+            font-size: inherit;
+            background: transparent;
+            min-height: 24px;
+        }
+        td input[type="text"]:focus, td select:focus, .editable-cell:focus {
+            border: 1px solid #3b82f6;
+            outline: none;
+            background: white;
+        }
+        .editable-cell {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Header Form Styles */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .header-table td { border: none; padding: 2px 0; vertical-align: middle; }
+        .header-table td:first-child { width: 150px; font-weight: 800; font-size: 14px; } /* Thicker and slightly larger */
+        .header-table td:nth-child(2) { width: 10px; font-weight: 800; font-size: 14px; }
+        .header-table input { border: none; padding: 2px; width: 100%; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; }
+        .header-table input:focus { outline: none; background: #f0f9ff; }
+
+        /* Image Upload */
+        .img-preview { width: 100%; height: auto; object-fit: contain; display: block; cursor: pointer; min-height: 100px; max-height: 150px; margin: 0 auto; transition: all 0.3s; }
+        .img-preview.full-cover { height: 150px; object-fit: cover; }
+        .file-input { display: none; }
+        .upload-btn { 
+            display: inline-block; padding: 4px 8px; background: #e2e8f0; border-radius: 4px; 
+            font-size: 10px; cursor: pointer; border: 1px solid #cbd5e1;
+        }
+        
+        /* Add padding for documentation cell so image doesn't touch borders */
+        td.doc-cell { padding: 4px !important; vertical-align: middle; position: relative; }
+        td.doc-cell .upload-btn { margin: 5px; }
+        
+        /* Image controls overlay */
+        .img-controls {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px;
+            border-radius: 4px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        td.doc-cell:hover .img-controls { opacity: 1; }
+        .img-control-btn {
+            font-size: 10px;
+            padding: 2px 6px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .img-control-btn:hover { background: #f0f0f0; }
+
+        /* Print Styles */
+        @media print {
+            body { background: white; margin: 0; }
+            .page { 
+                margin: 0; 
+                box-shadow: none; 
+                width: auto; 
+                height: auto; 
+                padding-top: 0; /* Margin top handled by @page for header visibility */
+                padding-bottom: 0; 
+                padding-left: 0; 
+                padding-right: 0; 
+            }
+            
+            /* Enable background graphics */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Dynamic Page Size Handling */
+            /* 
+               We set text color to transparent in @page to hide browser headers/footers
+               BUT unfortunately, CSS standard does not support changing browser header/footer color directly via @page content.
+               Most browsers don't allow styling the auto-generated headers/footers (URL, Date, Title).
+               
+               HOWEVER, the user request is "biarkan tetap ada, hanya warnanya di ganti putih".
+               This implies they WANT the space to be taken, but the text invisible.
+               
+               If we set margin to 0 (previous step), they are gone (space reclaimed).
+               If we set margin to 1.5cm, they appear (black/grey usually).
+               
+               Since we cannot style browser-native headers with CSS (it's a browser restriction), 
+               the closest interpretation is to keep the MARGIN (so the space is there), 
+               but rely on user print settings to turn them off OR accept we can't color them white.
+               
+               Wait, there is a trick for SOME browsers: color: transparent in body/html might inherit? 
+               No, usually they are separate.
+               
+               Let's try to restore the margins first (so they "exist").
+               And maybe the user implies they want to customize them? No, "browser header".
+               
+               Actually, if the user wants them "white", they effectively want them invisible but preserving the layout space?
+               Or maybe they think we have control over them.
+               
+               Let's restore the 1.5cm margin so they "appear" in layout (space-wise),
+               and we'll add a note that changing their color is a browser setting.
+               
+               BUT, if we use `@page { margin: ...; color: white; }` - some browsers might respect it for page numbers?
+               Let's try adding `color: white;` to @page rule.
+            */
+            @page { 
+                size: landscape; 
+                margin: 0mm; /* Reset default */
+                color: transparent !important; /* Try to make page-margin content transparent */
+            } 
+            
+            /* Add padding back to body since we removed page margin */
+            body { margin: 0mm; } 
+
+            /* Print Spacer Row for subsequent pages */
+            .print-spacer-row { 
+                display: none !important; /* Not needed if using @page margin? Wait, if we use @page margin, we don't need padding. */
+                height: 0; 
+                background: white; 
+                border: none !important;
+            }
+            .print-spacer-row th { 
+                border: none !important; 
+                background: white !important;
+                height: 0;
+                padding: 0;
+            }
+            
+            /* Hide the spacer on first page by negative margin? No, impossible. 
+               We accept it on first page, or user can adjust. 
+            */
+
+            .no-print { display: none !important; }
+            td input[type="text"] { border: none; }
+            .editable-cell { border: none; }
+            .upload-btn { display: none; }
+            /* Hide empty rows if marked as hidden? No, user wants to uncheck dates */
+            tr.hidden-row { display: none; }
+        }
+
+        /* Screen only utilities */
+        .screen-only { }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Controls Panel (No Print) -->
+    <div id="controlsPanel" class="max-w-[297mm] mx-auto mb-8 p-6 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl no-print text-white relative overflow-hidden">
+        <!-- Background Decoration -->
+        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+            <div class="flex items-center gap-3 mb-6 border-b border-white/20 pb-4">
+                <div class="p-2 bg-white/20 rounded-lg shadow-lg backdrop-blur-sm">
+                    <i class="fas fa-sliders-h text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold tracking-wide text-white drop-shadow-md">Pengaturan Laporan</h2>
+                    <p class="text-xs text-blue-100 font-light">Sesuaikan parameter laporan Anda di sini</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Date Inputs -->
+                <div class="space-y-2 group">
+                    <label class="block text-sm font-semibold text-blue-100 group-hover:text-white transition-colors"><i class="far fa-calendar-alt mr-1"></i> Tanggal Mulai</label>
+                    <input type="date" id="startDate" class="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:bg-white focus:text-gray-900 focus:ring-4 focus:ring-blue-400/50 transition-all outline-none shadow-inner backdrop-blur-sm cursor-pointer">
+                </div>
+                <div class="space-y-2 group">
+                    <label class="block text-sm font-semibold text-blue-100 group-hover:text-white transition-colors"><i class="far fa-calendar-check mr-1"></i> Tanggal Selesai</label>
+                    <input type="date" id="endDate" class="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:bg-white focus:text-gray-900 focus:ring-4 focus:ring-purple-400/50 transition-all outline-none shadow-inner backdrop-blur-sm cursor-pointer">
+                </div>
+
+                <!-- Paper Size -->
+                <div class="space-y-2 group">
+                    <label class="block text-sm font-semibold text-blue-100 group-hover:text-white transition-colors"><i class="fas fa-paperclip mr-1"></i> Ukuran Kertas</label>
+                    <div class="relative">
+                        <select id="paperSize" onchange="changePaperSize(this.value)" class="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white focus:bg-white focus:text-gray-900 focus:ring-4 focus:ring-indigo-400/50 transition-all outline-none shadow-inner appearance-none cursor-pointer">
+                            <option value="a4" class="text-gray-900">📄 A4 (29.7cm x 21.0cm)</option>
+                            <option value="legal" class="text-gray-900">📜 Legal/F4 (33.0cm x 21.59cm)</option>
+                        </select>
+                        <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-white/70"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exclude Days -->
+                <div class="space-y-2 group">
+                    <label class="block text-sm font-semibold text-blue-100 group-hover:text-white transition-colors"><i class="fas fa-ban mr-1"></i> Hari Libur</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-pointer transition-colors border border-white/10 select-none">
+                            <input type="checkbox" class="exclude-day w-4 h-4 rounded text-pink-500 focus:ring-pink-400 bg-white/80 border-transparent" value="0">
+                            <span class="text-sm font-medium">Minggu</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-pointer transition-colors border border-white/10 select-none">
+                            <input type="checkbox" class="exclude-day w-4 h-4 rounded text-pink-500 focus:ring-pink-400 bg-white/80 border-transparent" value="6">
+                            <span class="text-sm font-medium">Sabtu</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 cursor-pointer transition-colors border border-white/10 select-none">
+                            <input type="checkbox" class="exclude-day w-4 h-4 rounded text-pink-500 focus:ring-pink-400 bg-white/80 border-transparent" value="5">
+                            <span class="text-sm font-medium">Jumat</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 flex flex-wrap gap-4 pt-6 border-t border-white/20">
+                <button onclick="generateTable()" class="flex-1 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <i class="fas fa-table group-hover:animate-pulse"></i> 
+                    <span>Generate Tabel</span>
+                </button>
+                
+                <button onclick="copyContentToSameDays()" class="flex-1 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-orange-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group" title="Salin isi baris pertama setiap hari ke hari yang sama di minggu berikutnya">
+                    <i class="fas fa-copy group-hover:rotate-12 transition-transform"></i> 
+                    <span>Salin Data</span>
+                </button>
+
+                <button onclick="window.print()" class="flex-1 bg-white text-indigo-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-bold shadow-lg shadow-white/10 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <i class="fas fa-print group-hover:scale-110 transition-transform"></i> 
+                    <span>Cetak PDF</span>
+                </button>
+
+                <button onclick="clearTable()" class="px-6 py-3 rounded-xl font-bold text-pink-200 hover:text-white hover:bg-white/10 transition-all duration-200 flex items-center justify-center gap-2 group border border-transparent hover:border-white/20">
+                    <i class="fas fa-trash-alt group-hover:text-red-300 transition-colors"></i> 
+                    <span>Reset</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper -->
+    <div class="page a4" id="reportPage">
+        <!-- KOP Surat -->
+        <div class="flex items-center justify-between border-b-4 border-double border-black pb-2 mb-6 gap-4">
+            <!-- Logo Kiri -->
+            <div class="w-24 h-24 flex-shrink-0 flex items-center justify-center border border-dashed border-gray-300 relative group cursor-pointer" onclick="document.getElementById('logoLeftInput').click()">
+                <span class="text-xs text-gray-400 text-center group-hover:hidden p-1">Logo Kiri</span>
+                <img id="logoLeftPreview" src="" class="hidden w-full h-full object-contain absolute top-0 left-0" alt="Logo Kiri">
+                <input type="file" id="logoLeftInput" class="hidden" accept="image/*" onchange="previewLogo(this, 'logoLeftPreview')">
+            </div>
+
+            <!-- Teks KOP -->
+            <div class="text-center flex-grow">
+                <div contenteditable="true" class="font-bold text-lg leading-tight uppercase">PEMERINTAH PROVINSI SULAWESI UTARA</div>
+                <div contenteditable="true" class="font-bold text-lg leading-tight uppercase">DINAS PENDIDIKAN DAERAH</div>
+                <div contenteditable="true" class="font-bold text-xl leading-tight uppercase mt-1">SEKOLAH MENENGAH KEJURUAN NEGERI 4</div>
+                <div contenteditable="true" class="text-xs italic mt-1 leading-tight font-normal">Jalan. Rambutan No 20 Banjer Tikala Manado 95125 Sulut Kotak Pos 1724 Tel/Fax.0431-865615.E-mail: smk4mdo@yahoo com. MANADO</div>
+            </div>
+
+            <!-- Logo Kanan -->
+            <div class="w-24 h-24 flex-shrink-0 flex items-center justify-center border border-dashed border-gray-300 relative group cursor-pointer" onclick="document.getElementById('logoRightInput').click()">
+                <span class="text-xs text-gray-400 text-center group-hover:hidden p-1">Logo Kanan</span>
+                <img id="logoRightPreview" src="" class="hidden w-full h-full object-contain absolute top-0 left-0" alt="Logo Kanan">
+                <input type="file" id="logoRightInput" class="hidden" accept="image/*" onchange="previewLogo(this, 'logoRightPreview')">
+            </div>
+        </div>
+
+        <script>
+            function previewLogo(input, previewId) {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.getElementById(previewId);
+                        img.src = e.target.result;
+                        img.classList.remove('hidden');
+                        img.parentElement.classList.add('border-none'); // Remove border once image is loaded
+                        const span = img.parentElement.querySelector('span');
+                        if(span) span.style.display = 'none';
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            }
+        </script>
+
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-bold uppercase">Laporan Kegiatan Pembelajaran Tatap Muka</h1>
+            <h2 class="text-lg font-bold uppercase" id="reportPeriod">Bulan ... Tahun ...</h2>
+        </div>
+
+        <!-- Header Info -->
+        <table class="header-table">
+            <tr>
+                <td>Nama Sekolah</td>
+                <td>:</td>
+                <td><input type="text" placeholder="Masukkan Nama Sekolah"></td>
+            </tr>
+            <tr>
+                <td>Nama Guru</td>
+                <td>:</td>
+                <td><input type="text" placeholder="Masukkan Nama Guru"></td>
+            </tr>
+            <tr>
+                <td>NIP</td>
+                <td>:</td>
+                <td><input type="text" placeholder="Masukkan NIP"></td>
+            </tr>
+            <tr>
+                <td>Mata Pelajaran</td>
+                <td>:</td>
+                <td><input type="text" placeholder="Masukkan Mata Pelajaran"></td>
+            </tr>
+            <tr>
+                <td>Status Guru</td>
+                <td>:</td>
+                <td><input type="text" placeholder="Masukkan Status Guru"></td>
+            </tr>
+        </table>
+
+        <!-- Main Table -->
+        <table id="reportTable">
+            <thead>
+                <tr class="print-spacer-row" style="display: none;">
+                    <th colspan="12" style="border: none !important; height: 15mm; background: white;"></th>
+                </tr>
+                <tr>
+                    <th rowspan="2" style="width: 40px;">No</th>
+                    <th rowspan="2" style="width: 100px;">Hari/Tanggal</th>
+                    <th rowspan="2" style="width: 250px;">KD/Materi</th>
+                    <th rowspan="2" style="width: 120px;">Kelas/ Jurusan</th>
+                    <th rowspan="2" style="width: 60px;">Mapel/ JPL</th>
+                    <th colspan="3" style="width: 120px;">Keadaan Siswa</th>
+                    <th rowspan="2" style="width: 150px;">Masalah</th>
+                    <th rowspan="2" style="width: 150px;">Dokumentasi</th>
+                    <th rowspan="2" style="width: 80px;">Keterangan</th>
+                    <th rowspan="2" class="no-print bg-blue-100" style="width: 30px;">
+                        <div class="flex flex-col items-center gap-1">
+                            Aksi
+                            <input type="color" onchange="changeHeaderColor(this)" value="#e2e8f0" class="w-4 h-4 p-0 border border-gray-300 rounded cursor-pointer" title="Ubah Warna Kop Tabel">
+                        </div>
+                    </th>
+                </tr>
+                <tr>
+                    <th style="width: 40px;">Jlh</th>
+                    <th style="width: 40px;">Hadir</th>
+                    <th style="width: 40px;">Tdk</th>
+                </tr>
+            </thead>
+            <tbody id="reportTableBody">
+                <!-- Rows will be generated here -->
+                <tr>
+                    <td colspan="12" class="text-center py-4 text-gray-400">Silakan atur tanggal dan klik Generate Tabel</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Footer Signatures Table -->
+        <table class="w-full mt-8" style="border: none !important;">
+            <tr style="border: none;">
+                <!-- Left: Kepala Sekolah -->
+                <td style="border: none; width: 33%; vertical-align: top; padding: 0;" class="text-center">
+                    <p>Mengetahui,</p>
+                    <p class="font-bold">Kepala Sekolah</p>
+                    <div style="height: 80px;"></div>
+                    <input type="text" class="text-center w-full font-bold border-none bg-transparent" placeholder="(Nama Kepala Sekolah)">
+                    <input type="text" class="text-center w-full text-xs border-none bg-transparent" placeholder="NIP. .......................">
+                </td>
+
+                <!-- Center: Pengawas Bina (Offset lower) -->
+                <td style="border: none; width: 33%; vertical-align: top; padding-top: 50px;" class="text-center">
+                    <p>Mengetahui,</p>
+                    <p class="font-bold">Pengawas Bina</p>
+                    <div style="height: 80px;"></div>
+                    <input type="text" class="text-center w-full font-bold border-none bg-transparent" placeholder="(Nama Pengawas)">
+                    <input type="text" class="text-center w-full text-xs border-none bg-transparent" placeholder="NIP. .......................">
+                </td>
+
+                <!-- Right: Guru Mata Pelajaran -->
+                <td style="border: none; width: 33%; vertical-align: top; padding: 0;" class="text-center">
+                    <p>Manado, <span contenteditable="true" id="currentDate" class="border-b border-dotted border-gray-400 px-1"></span></p>
+                    <p class="font-bold">Guru Mata Pelajaran</p>
+                    <div style="height: 80px;"></div>
+                    <input type="text" class="text-center w-full font-bold border-none bg-transparent" placeholder="(Nama Guru)">
+                    <input type="text" class="text-center w-full text-xs border-none bg-transparent" placeholder="NIP. .......................">
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        // Initial setup for paper size
+        let currentPaperStyle = document.createElement('style');
+        document.head.appendChild(currentPaperStyle);
+        changePaperSize('a4');
+
+        function changePaperSize(size) {
+            const page = document.getElementById('reportPage');
+            // Remove existing size classes
+            page.classList.remove('a4', 'legal');
+            
+            // Add new size class
+            page.classList.add(size);
+            
+            // Update CSS @page rule for print
+            let style = document.getElementById('page-size-style');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'page-size-style';
+                document.head.appendChild(style);
+            }
+            
+            if (size === 'legal') {
+                // F4/Legal: 21.59cm x 33cm
+                // Landscape: 33cm x 21.59cm
+                // Margins: 15mm (space exists, color attempted white/transparent)
+                style.innerHTML = `@page { size: 330mm 215.9mm; margin: 15mm; color: transparent !important; }`;
+            } else {
+                // A4: 210mm x 297mm
+                // Landscape: 297mm x 210mm
+                style.innerHTML = `@page { size: A4 landscape; margin: 15mm; color: transparent !important; }`;
+            }
+        }
+
+        // Set current date in footer
+        const now = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').innerText = now.toLocaleDateString('id-ID', options);
+        
+        // Default start/end dates (1st to last of current month)
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        document.getElementById('startDate').valueAsDate = firstDay;
+        document.getElementById('endDate').valueAsDate = lastDay;
+
+        function generateTable() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            
+            // Update Report Period Title
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            // Use start date month/year as the reference
+            const periodStr = `BULAN ${monthNames[startDate.getMonth()].toUpperCase()} TAHUN ${startDate.getFullYear()}`;
+            document.getElementById('reportPeriod').innerText = periodStr;
+
+            const tbody = document.getElementById('reportTableBody');
+            const excludedDays = Array.from(document.querySelectorAll('.exclude-day:checked')).map(cb => parseInt(cb.value));
+            
+            tbody.innerHTML = '';
+            
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const dayOfWeek = currentDate.getDay();
+                
+                // Skip if excluded (0=Sunday, 6=Saturday)
+                if (!excludedDays.includes(dayOfWeek)) {
+                    addTableRow(tbody, 0, currentDate); // Number will be set by updateRowNumbers
+                }
+                
+                // Next day
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            updateRowNumbers();
+            
+            // Add Custom Footer Row
+            addCustomFooterRow(tbody);
+        }
+
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('#reportTableBody tr');
+            let count = 1;
+            rows.forEach(row => {
+                if (!row.classList.contains('hidden-print') && !row.classList.contains('custom-footer-row')) {
+                    const noCell = row.querySelector('.no-cell');
+                    if (noCell) noCell.textContent = count++;
+                }
+            });
+        }
+
+        function addCustomFooterRow(tbody) {
+            const tr = document.createElement('tr');
+            tr.classList.add('custom-footer-row');
+            
+            // Left Cell (Colspan 6)
+            const td1 = document.createElement('td');
+            td1.colSpan = 6;
+            td1.className = 'p-0 relative group align-middle';
+            // Added text-center to the div insidecreateEditableWithControls call is not possible directly, 
+            // so we add it to the td content or modify createEditableWithControls to accept class.
+            // Let's modify createEditableWithControls to accept classes.
+            td1.innerHTML = createEditableWithControls('text-center');
+            tr.appendChild(td1);
+
+            // Right Cell (Colspan 6)
+            const td2 = document.createElement('td');
+            td2.colSpan = 6;
+            td2.className = 'p-0 relative group align-top';
+            td2.innerHTML = createEditableWithControls('');
+            tr.appendChild(td2);
+
+            tbody.appendChild(tr);
+        }
+
+        function createEditableWithControls(extraClass = '') {
+            return `
+                <div class="no-print absolute top-0 right-0 p-1 bg-gray-100 border rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1 shadow-md items-center">
+                    <button onclick="toggleBold(this)" class="px-2 py-0.5 bg-white border hover:bg-gray-200 rounded text-xs font-bold" title="Tebal">B</button>
+                    <select onchange="changeFontSize(this)" class="text-xs border rounded p-0.5 bg-white cursor-pointer" title="Ukuran Huruf">
+                        <option value="12px">12</option>
+                        <option value="14px">14</option>
+                        <option value="16px">16</option>
+                        <option value="18px">18</option>
+                        <option value="20px">20</option>
+                    </select>
+                    <input type="color" onchange="changeCellColor(this)" value="#ffffff" class="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer" title="Warna Latar">
+                </div>
+                <div contenteditable="true" class="editable-cell custom-text min-h-[24px] p-1 ${extraClass}" style="font-size: 14px;"></div>
+            `;
+        }
+
+        function toggleBold(btn) {
+            const container = btn.closest('td');
+            const editor = container.querySelector('.editable-cell');
+            if (editor.style.fontWeight === 'bold') {
+                editor.style.fontWeight = 'normal';
+                btn.classList.remove('bg-blue-100', 'border-blue-300');
+            } else {
+                editor.style.fontWeight = 'bold';
+                btn.classList.add('bg-blue-100', 'border-blue-300');
+            }
+        }
+
+        function changeFontSize(select) {
+            const container = select.closest('td');
+            const editor = container.querySelector('.editable-cell');
+            editor.style.fontSize = select.value;
+        }
+
+        function changeCellColor(input) {
+            const container = input.closest('td');
+            container.style.backgroundColor = input.value;
+        }
+
+        function addTableRow(tbody, number, dateObj) {
+            const tr = document.createElement('tr');
+            
+            // Format Date: Senin, 01 Juli 2024
+            const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            
+            tr.innerHTML = `
+                <td class="text-center font-bold no-cell">${number}</td>
+                <td>${dateStr}</td>
+                <td><div contenteditable="true" class="editable-cell" data-placeholder="KD/Materi...">-</div></td>
+                <td><div contenteditable="true" class="editable-cell" data-placeholder="Kelas">-</div></td>
+                <td><div contenteditable="true" class="editable-cell" data-placeholder="JPL">-</div></td>
+                <td><div contenteditable="true" class="editable-cell text-center" data-placeholder="-">-</div></td>
+                <td><div contenteditable="true" class="editable-cell text-center" data-placeholder="-">-</div></td>
+                <td><div contenteditable="true" class="editable-cell text-center" data-placeholder="-">-</div></td>
+                <td><div contenteditable="true" class="editable-cell" data-placeholder="Masalah...">-</div></td>
+                <td class="text-center align-middle doc-cell group">
+                    <label class="upload-btn no-print">
+                        Upload
+                        <input type="file" class="file-input" accept="image/*" onchange="previewImage(this)">
+                    </label>
+                    <img src="" class="img-preview hidden" onclick="triggerUpload(this)">
+                    <div class="img-controls no-print hidden">
+                        <button class="img-control-btn" onclick="toggleImageFit(this, 'contain')" title="Sesuaikan (Contain)">Fit</button>
+                        <button class="img-control-btn" onclick="toggleImageFit(this, 'cover')" title="Penuhi (Cover)">Full</button>
+                    </div>
+                </td>
+                <td><div contenteditable="true" class="editable-cell" data-placeholder="Keterangan...">-</div></td>
+                <td class="no-print text-center bg-blue-50">
+                    <div class="flex flex-col items-center gap-1">
+                        <input type="checkbox" title="Tandai tidak perlu (Hapus dari print)" onchange="toggleRow(this)">
+                        <input type="color" title="Pilih Warna Baris" onchange="changeRowColor(this)" value="#ffffff" class="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer">
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function changeHeaderColor(input) {
+            const ths = document.querySelectorAll('#reportTable thead th');
+            ths.forEach(th => {
+                // Don't change the "Aksi" column background if you want it distinct, 
+                // or change it too. User asked "tabel paling atas kop/judul punya pilihan warna".
+                // Usually this means the main headers.
+                if (!th.classList.contains('bg-blue-100')) { // Skip the Aksi header container itself if we want to keep it distinct?
+                    // Or just change all THs.
+                    // But Aksi has bg-blue-100 class.
+                    // Let's change all except the input container if needed.
+                    // Actually, let's just change the style background color.
+                    th.style.backgroundColor = input.value;
+                }
+            });
+            // Also update Aksi column to match if desired, or keep distinct?
+            // "untuk menu aksi di 1 kolom beri warna berbeda agar lebih menarik" -> Aksi column body needs color.
+            // "tabel paling atas kop/judul punya pilihan warna" -> Header needs color picker.
+            
+            // So header color picker should change ALL headers?
+            // Let's make it change all headers.
+            ths.forEach(th => th.style.backgroundColor = input.value);
+        }
+
+        function changeRowColor(input) {
+            const row = input.closest('tr');
+            row.style.backgroundColor = input.value;
+        }
+
+        function clearTable() {
+            document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="12" class="text-center py-4 text-gray-400">Silakan atur tanggal dan klik Generate Tabel</td></tr>';
+        }
+
+        function copyContentToSameDays() {
+            const tbody = document.getElementById('reportTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Map to store the first occurrence data for each day name (Senin, Selasa, etc.)
+            const firstOccurrenceData = {};
+
+            rows.forEach(row => {
+                // Skip special rows
+                if (row.classList.contains('print-spacer-row') || row.classList.contains('custom-footer-row') || row.innerText.includes('Silakan atur tanggal')) {
+                    return;
+                }
+
+                const dateCell = row.cells[1];
+                if (!dateCell) return;
+                
+                const dateText = dateCell.innerText; // e.g., "Senin, 01 Juli 2024"
+                if (!dateText.includes(',')) return; // Invalid format check
+
+                const dayName = dateText.split(',')[0].trim(); // "Senin"
+
+                if (!firstOccurrenceData[dayName]) {
+                    // This is the first time we see this day (e.g., first Monday)
+                    // Store its data to copy later
+                    // We need to be careful about selectors.
+                    
+                    const getCellText = (index) => {
+                        const cell = row.cells[index];
+                        const div = cell.querySelector('.editable-cell');
+                        return div ? div.innerText : cell.innerText;
+                    };
+                    
+                    const getInputValue = (index) => {
+                        const cell = row.cells[index];
+                        const input = cell.querySelector('input[type="text"]');
+                        if (input) return input.value;
+                        
+                        // If converted to contenteditable div
+                        const div = cell.querySelector('.editable-cell');
+                        return div ? div.innerText : '';
+                    };
+
+                    firstOccurrenceData[dayName] = {
+                        kd: getCellText(2),
+                        kelas: getCellText(3),
+                        jpl: getCellText(4),
+                        jlh: getInputValue(5),
+                        hadir: getInputValue(6),
+                        tdk: getInputValue(7),
+                        masalah: getCellText(8),
+                        keterangan: getCellText(10)
+                    };
+                } else {
+                    // This is a subsequent occurrence of the same day (e.g., second Monday)
+                    // Copy data from the first occurrence
+                    const data = firstOccurrenceData[dayName];
+                    
+                    const setCellText = (index, value) => {
+                        const cell = row.cells[index];
+                        const div = cell.querySelector('.editable-cell');
+                        if (div) div.innerText = value;
+                    };
+                    
+                    const setInputValue = (index, value) => {
+                        const cell = row.cells[index];
+                        const input = cell.querySelector('input[type="text"]');
+                        if (input) {
+                             input.value = value;
+                        } else {
+                            // If converted to contenteditable div
+                            const div = cell.querySelector('.editable-cell');
+                            if (div) div.innerText = value;
+                        }
+                    };
+
+                    setCellText(2, data.kd);
+                    setCellText(3, data.kelas);
+                    setCellText(4, data.jpl);
+                    
+                    setInputValue(5, data.jlh);
+                    setInputValue(6, data.hadir);
+                    setInputValue(7, data.tdk);
+                    
+                    setCellText(8, data.masalah);
+                    setCellText(10, data.keterangan);
+                }
+            });
+            
+            // alert('Data berhasil disalin ke hari yang sama di minggu-minggu berikutnya!');
+            alert('Data berhasil disalin! Isi baris pertama pada setiap hari telah diduplikasi ke hari yang sama di minggu berikutnya.');
+        }
+
+        function toggleRow(checkbox) {
+            const row = checkbox.closest('tr');
+            if (checkbox.checked) {
+                row.classList.add('opacity-50', 'bg-gray-100');
+                // Optional: add a class to hide in print
+                row.classList.add('hidden-print'); // We need to add this style
+            } else {
+                row.classList.remove('opacity-50', 'bg-gray-100', 'hidden-print');
+            }
+            updateRowNumbers();
+        }
+
+        function toggleImageFit(btn, mode) {
+            const cell = btn.closest('td');
+            const img = cell.querySelector('.img-preview');
+            
+            if (!img) return;
+            
+            if (mode === 'contain') {
+                img.style.objectFit = 'contain';
+                img.style.width = '100%';
+                img.style.height = 'auto';
+                img.style.maxHeight = '150px';
+            } else if (mode === 'cover') {
+                img.style.objectFit = 'cover';
+                img.style.width = '100%';
+                img.style.height = '150px';
+                img.style.maxHeight = 'none';
+            }
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const cell = input.closest('td');
+                    const img = cell.querySelector('.img-preview');
+                    const label = cell.querySelector('label');
+                    const controls = cell.querySelector('.img-controls');
+                    
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    label.classList.add('hidden');
+                    if(controls) {
+                        controls.classList.remove('hidden');
+                        controls.classList.add('flex');
+                    }
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function triggerUpload(img) {
+            const cell = img.closest('td');
+            const input = cell.querySelector('.file-input');
+            input.click();
+        }
+    </script>
+    <style>
+        @media print {
+            .hidden-print { display: none !important; }
+            /* Ensure textareas expand or look like text */
+            textarea { border: none; resize: none; overflow: hidden; }
+        }
+        
+        /* Placeholder for contenteditable */
+        .editable-cell:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+        }
+    </style>
+</body>
+</html>
