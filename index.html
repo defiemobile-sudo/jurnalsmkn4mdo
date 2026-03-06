@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Kegiatan Pembelajaran Tatap Muka</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -273,6 +274,22 @@
                     <i class="fas fa-table group-hover:animate-pulse"></i> 
                     <span>Generate Tabel</span>
                 </button>
+                
+                <button onclick="addManualRow()" class="flex-1 bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-500 hover:to-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <i class="fas fa-plus group-hover:rotate-90 transition-transform"></i> 
+                    <span>Tambah Baris</span>
+                </button>
+
+                <button onclick="saveToExcel()" class="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-green-600/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <i class="fas fa-file-excel group-hover:bounce"></i> 
+                    <span>Simpan Excel</span>
+                </button>
+
+                <button onclick="document.getElementById('excelInput').click()" class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-yellow-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <i class="fas fa-folder-open group-hover:rotate-12 transition-transform"></i> 
+                    <span>Buka Excel</span>
+                </button>
+                <input type="file" id="excelInput" accept=".xlsx, .xls" class="hidden" onchange="loadFromExcel(this)">
                 
                 <button onclick="copyContentToSameDays()" class="flex-1 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-orange-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group" title="Salin isi baris pertama setiap hari ke hari yang sama di minggu berikutnya">
                     <i class="fas fa-copy group-hover:rotate-12 transition-transform"></i> 
@@ -594,15 +611,23 @@
             container.style.backgroundColor = input.value;
         }
 
-        function addTableRow(tbody, number, dateObj) {
+        function addTableRow(tbody, number, dateInput, isManual = false) {
             const tr = document.createElement('tr');
             
-            // Format Date: Senin, 01 Juli 2024
-            const dateStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            let dateStr = '';
+            if (dateInput instanceof Date) {
+                dateStr = dateInput.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            } else {
+                dateStr = dateInput || '-';
+            }
             
+            const dateCellHtml = isManual 
+                ? `<div contenteditable="true" class="editable-cell" data-placeholder="Hari, Tanggal...">${dateStr}</div>` 
+                : dateStr;
+
             tr.innerHTML = `
                 <td class="text-center font-bold no-cell">${number}</td>
-                <td>${dateStr}</td>
+                <td>${dateCellHtml}</td>
                 <td><div contenteditable="true" class="editable-cell" data-placeholder="KD/Materi...">-</div></td>
                 <td><div contenteditable="true" class="editable-cell" data-placeholder="Kelas">-</div></td>
                 <td><div contenteditable="true" class="editable-cell" data-placeholder="JPL">-</div></td>
@@ -626,11 +651,239 @@
                     <div class="flex flex-col items-center gap-1">
                         <input type="checkbox" title="Tandai tidak perlu (Hapus dari print)" onchange="toggleRow(this)">
                         <input type="color" title="Pilih Warna Baris" onchange="changeRowColor(this)" value="#ffffff" class="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer">
+                        ${isManual ? `<button onclick="if(confirm('Hapus baris ini?')) { this.closest('tr').remove(); updateRowNumbers(); }" class="text-red-500 hover:text-red-700 text-xs" title="Hapus Baris"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
+            return tr;
         }
+
+        function addManualRow() {
+            const tbody = document.getElementById('reportTableBody');
+            // Remove the "empty" message if it exists
+            const emptyRow = tbody.querySelector('td[colspan="12"]')?.parentNode;
+            if (emptyRow) {
+                emptyRow.remove();
+            }
+            
+            const tr = addTableRow(tbody, 0, new Date(), true);
+            
+            // If footer exists, move the new row before it
+            const footer = tbody.querySelector('.custom-footer-row');
+            if (footer) {
+                tbody.insertBefore(tr, footer);
+            }
+            
+            updateRowNumbers();
+        }
+
+        function saveToExcel() {
+            // 1. Gather Header Info
+            const headerInputs = document.querySelectorAll('.header-table input');
+            const infoData = {
+                schoolName: headerInputs[0].value,
+                teacherName: headerInputs[1].value,
+                nip: headerInputs[2].value,
+                subject: headerInputs[3].value,
+                teacherStatus: headerInputs[4].value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                paperSize: document.getElementById('paperSize').value,
+                excludedDays: Array.from(document.querySelectorAll('.exclude-day:checked')).map(cb => cb.value).join(','),
+                
+                // Footer Signatures
+                kepalaSekolah: document.querySelectorAll('.w-full.mt-8 input')[0].value, // Very fragile selector, let's hope
+                kepalaSekolahNip: document.querySelectorAll('.w-full.mt-8 input')[1].value,
+                pengawas: document.querySelectorAll('.w-full.mt-8 input')[2].value,
+                pengawasNip: document.querySelectorAll('.w-full.mt-8 input')[3].value,
+                guru: document.querySelectorAll('.w-full.mt-8 input')[4].value,
+                guruNip: document.querySelectorAll('.w-full.mt-8 input')[5].value,
+                
+                // Logos
+                logoLeft: document.getElementById('logoLeftPreview').src,
+                logoRight: document.getElementById('logoRightPreview').src
+            };
+
+            // 2. Gather Table Data
+            const rows = document.querySelectorAll('#reportTableBody tr');
+            const tableData = [];
+            
+            rows.forEach(row => {
+                if (row.classList.contains('custom-footer-row') || row.classList.contains('print-spacer-row')) return;
+                if (row.innerText.includes('Silakan atur tanggal')) return;
+
+                const getCellText = (index) => {
+                    const cell = row.cells[index];
+                    if (!cell) return '';
+                    const div = cell.querySelector('.editable-cell');
+                    return div ? div.innerText : cell.innerText;
+                };
+
+                const getImgSrc = (index) => {
+                    const cell = row.cells[index];
+                    if (!cell) return '';
+                    const img = cell.querySelector('img');
+                    return (img && !img.classList.contains('hidden')) ? img.src : '';
+                };
+                
+                const isManual = row.cells[1].querySelector('.editable-cell') !== null;
+
+                const rowData = {
+                    no: row.cells[0].innerText,
+                    date: getCellText(1),
+                    isManual: isManual,
+                    kd: getCellText(2),
+                    kelas: getCellText(3),
+                    jpl: getCellText(4),
+                    jlh: getCellText(5),
+                    hadir: getCellText(6),
+                    tdk: getCellText(7),
+                    masalah: getCellText(8),
+                    img: getImgSrc(9),
+                    keterangan: getCellText(10),
+                    hidden: row.querySelector('input[type="checkbox"]')?.checked || false,
+                    color: row.querySelector('input[type="color"]')?.value || '#ffffff'
+                };
+                tableData.push(rowData);
+            });
+
+            // 3. Create Workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Info Sheet
+            const infoSheet = XLSX.utils.json_to_sheet([infoData]);
+            XLSX.utils.book_append_sheet(wb, infoSheet, "Info");
+            
+            // Data Sheet
+            const dataSheet = XLSX.utils.json_to_sheet(tableData);
+            XLSX.utils.book_append_sheet(wb, dataSheet, "Jurnal");
+
+            // Save
+            XLSX.writeFile(wb, "Jurnal_Mengajar_Backup.xlsx");
+        }
+
+        function loadFromExcel(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: 'array'});
+                
+                // 1. Restore Info
+                if (wb.Sheets["Info"]) {
+                    const infoData = XLSX.utils.sheet_to_json(wb.Sheets["Info"])[0];
+                    if (infoData) {
+                        const headerInputs = document.querySelectorAll('.header-table input');
+                        if (infoData.schoolName) headerInputs[0].value = infoData.schoolName;
+                        if (infoData.teacherName) headerInputs[1].value = infoData.teacherName;
+                        if (infoData.nip) headerInputs[2].value = infoData.nip;
+                        if (infoData.subject) headerInputs[3].value = infoData.subject;
+                        if (infoData.teacherStatus) headerInputs[4].value = infoData.teacherStatus;
+                        
+                        if (infoData.startDate) document.getElementById('startDate').value = infoData.startDate;
+                        if (infoData.endDate) document.getElementById('endDate').value = infoData.endDate;
+                        if (infoData.paperSize) {
+                            document.getElementById('paperSize').value = infoData.paperSize;
+                            changePaperSize(infoData.paperSize);
+                        }
+                        
+                        // Restore checkboxes
+                        if (infoData.excludedDays) {
+                            const excluded = infoData.excludedDays.split(',');
+                            document.querySelectorAll('.exclude-day').forEach(cb => {
+                                cb.checked = excluded.includes(cb.value);
+                            });
+                        }
+
+                        // Restore Footer Signatures
+                        const footerInputs = document.querySelectorAll('.w-full.mt-8 input');
+                        if (infoData.kepalaSekolah) footerInputs[0].value = infoData.kepalaSekolah;
+                        if (infoData.kepalaSekolahNip) footerInputs[1].value = infoData.kepalaSekolahNip;
+                        if (infoData.pengawas) footerInputs[2].value = infoData.pengawas;
+                        if (infoData.pengawasNip) footerInputs[3].value = infoData.pengawasNip;
+                        if (infoData.guru) footerInputs[4].value = infoData.guru;
+                        if (infoData.guruNip) footerInputs[5].value = infoData.guruNip;
+                        
+                        // Restore Logos
+                        if (infoData.logoLeft && infoData.logoLeft.startsWith('data:image')) {
+                            const img = document.getElementById('logoLeftPreview');
+                            img.src = infoData.logoLeft;
+                            img.classList.remove('hidden');
+                            img.parentElement.classList.add('border-none');
+                            img.parentElement.querySelector('span').style.display = 'none';
+                        }
+                        if (infoData.logoRight && infoData.logoRight.startsWith('data:image')) {
+                            const img = document.getElementById('logoRightPreview');
+                            img.src = infoData.logoRight;
+                            img.classList.remove('hidden');
+                            img.parentElement.classList.add('border-none');
+                            img.parentElement.querySelector('span').style.display = 'none';
+                        }
+                    }
+                }
+
+                // 2. Restore Table
+                if (wb.Sheets["Jurnal"]) {
+                    const tableData = XLSX.utils.sheet_to_json(wb.Sheets["Jurnal"]);
+                    const tbody = document.getElementById('reportTableBody');
+                    tbody.innerHTML = ''; // Clear existing
+                    
+                    tableData.forEach(row => {
+                        const tr = addTableRow(tbody, row.no, row.date, row.isManual);
+                        
+                        // Helper to set text
+                        const setCellText = (index, value) => {
+                            const cell = tr.cells[index];
+                            const div = cell.querySelector('.editable-cell');
+                            if (div) div.innerText = value || '-';
+                            else cell.innerText = value || '';
+                        };
+
+                        setCellText(2, row.kd);
+                        setCellText(3, row.kelas);
+                        setCellText(4, row.jpl);
+                        setCellText(5, row.jlh);
+                        setCellText(6, row.hadir);
+                        setCellText(7, row.tdk);
+                        setCellText(8, row.masalah);
+                        setCellText(10, row.keterangan);
+                        
+                        // Restore Image
+                        if (row.img && row.img.startsWith('data:image')) {
+                            const img = tr.cells[9].querySelector('.img-preview');
+                            const label = tr.cells[9].querySelector('label');
+                            const controls = tr.cells[9].querySelector('.img-controls');
+                            img.src = row.img;
+                            img.classList.remove('hidden');
+                            label.classList.add('hidden');
+                            controls.classList.remove('hidden');
+                            controls.classList.add('flex');
+                        }
+
+                        // Restore State
+                        if (row.hidden) {
+                            tr.querySelector('input[type="checkbox"]').checked = true;
+                            toggleRow(tr.querySelector('input[type="checkbox"]'));
+                        }
+                        if (row.color && row.color !== '#ffffff') {
+                            const colorInput = tr.querySelector('input[type="color"]');
+                            colorInput.value = row.color;
+                            changeRowColor(colorInput);
+                        }
+                    });
+                    
+                    addCustomFooterRow(tbody);
+                    updateRowNumbers();
+                }
+                
+                alert('Data berhasil dimuat dari Excel!');
+            };
+            reader.readAsArrayBuffer(input.files[0]);
+        }
+
+
 
         function changeHeaderColor(input) {
             const ths = document.querySelectorAll('#reportTable thead th');
