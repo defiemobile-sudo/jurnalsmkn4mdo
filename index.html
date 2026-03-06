@@ -282,12 +282,12 @@
 
                 <button onclick="saveToExcel()" class="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-green-600/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
                     <i class="fas fa-file-excel group-hover:bounce"></i> 
-                    <span>Simpan Excel</span>
+                    <span>Backup Data</span>
                 </button>
 
                 <button onclick="document.getElementById('excelInput').click()" class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-yellow-500/30 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-2 group">
                     <i class="fas fa-folder-open group-hover:rotate-12 transition-transform"></i> 
-                    <span>Buka Excel</span>
+                    <span>Restore Data</span>
                 </button>
                 <input type="file" id="excelInput" accept=".xlsx, .xls" class="hidden" onchange="loadFromExcel(this)">
                 
@@ -398,7 +398,7 @@
                     <th rowspan="2" style="width: 100px;">Hari/Tanggal</th>
                     <th rowspan="2" style="width: 250px;">KD/Materi</th>
                     <th rowspan="2" style="width: 120px;">Kelas/ Jurusan</th>
-                    <th rowspan="2" style="width: 60px;">Mapel/ JPL</th>
+                    <th rowspan="2" style="width: 100px;">Mapel/ JPL</th>
                     <th colspan="3" style="width: 120px;">Keadaan Siswa</th>
                     <th rowspan="2" style="width: 150px;">Masalah</th>
                     <th rowspan="2" style="width: 150px;">Dokumentasi</th>
